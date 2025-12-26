@@ -4,16 +4,16 @@ const API_URL = "https://tunefully-abstemious-shu.ngrok-free.dev/api/results";
 // 狀態變數
 let previousDataMap = { bull: [], bear: [] }; 
 let isFirstLoad = true;
+let pollInterval = null; // 輪詢計時器
 
 let settings = {
     notifications: false,
     sound: false,
     volume: 0.5,
     direction: 'all',
-    apiKey: "" // 新增金鑰欄位
+    apiKey: ""
 };
 
-// 初始化音效
 const audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
 function playBell() {
@@ -44,21 +44,33 @@ function playBell() {
 document.addEventListener('DOMContentLoaded', () => {
     loadSettings();
     setupModal();
-    updateDashboard();
     
-    // 輪詢與時間更新
-    setInterval(updateDashboard, 10000); // 10秒請求一次資料
-    setInterval(updateToastTimes, 60000); // 1分鐘更新一次通知時間
+    // 第一次載入，傳送 claim=true 搶奪登入
+    updateDashboard(true);
+    
+    // 開始輪詢 (之後都是被動更新 isClaiming=false)
+    startPolling();
+
+    setInterval(updateToastTimes, 60000);
 });
 
-async function updateDashboard() {
+function startPolling() {
+    if (pollInterval) clearInterval(pollInterval);
+    pollInterval = setInterval(() => {
+        updateDashboard(false);
+    }, 10000); // 10秒一次
+}
+
+async function updateDashboard(isClaiming = false) {
     const statusText = document.getElementById('statusText');
     const dot = document.getElementById('dot');
     
-    // 組合 API URL (帶上 key)
     let url = `${API_URL}?t=${new Date().getTime()}`;
     if (settings.apiKey) {
         url += `&key=${encodeURIComponent(settings.apiKey)}`;
+        if (isClaiming) {
+            url += `&claim=true`;
+        }
     }
 
     try {
@@ -66,29 +78,40 @@ async function updateDashboard() {
             headers: new Headers({ "ngrok-skip-browser-warning": "true" }),
         });
 
-        // 處理 409 衝突 (重複登入)
+        // 🔥 處理被踢出 (409)
         if (res.status === 409) {
-            const errJson = await res.json();
-            statusText.innerText = '⚠️ 金鑰多裝置衝突';
+            // 停止輪詢 (自殺邏輯)
+            if (pollInterval) {
+                clearInterval(pollInterval);
+                pollInterval = null;
+            }
+
+            // 更新 UI
+            statusText.innerText = '🚫 已斷線：帳號在其他裝置登入';
+            statusText.style.color = '#F44336';
             dot.className = 'dot red';
             dot.style.boxShadow = "none";
-            // 只有當不是第一次載入時才彈出警告，避免一打開就跳視窗
-            if (!isFirstLoad) {
-                showToastAlert("連線被拒", errJson.detail || "金鑰正在其他裝置使用中", "bear");
+            
+            showToastAlert("連線中斷", "您的金鑰已在另一台裝置使用。<br>本機已停止更新。", "bear");
+            
+            const keyStatus = document.getElementById("keyStatus");
+            if (keyStatus) {
+                keyStatus.innerText = "❌ 已被強制登出";
+                keyStatus.style.color = "#F44336";
             }
             return;
         }
 
         const json = await res.json();
         
-        // 顯示狀態
         if (json.status === 'success') {
             const isVIP = json.type === 'Premium';
             const userLabel = isVIP ? `👑 VIP (${json.user})` : 'Guest (30m延遲)';
             
             statusText.innerText = `${userLabel} | 更新: ${json.timestamp}`;
-            
-            // VIP 顯示金色，免費顯示綠色
+            statusText.style.color = '#666';
+
+            // VIP 狀態顯示
             dot.className = isVIP ? 'dot orange' : 'dot green';
             dot.style.boxShadow = isVIP ? "0 0 8px #FFD700" : "0 0 5px #4CAF50";
 
@@ -99,7 +122,7 @@ async function updateDashboard() {
             previousDataMap.bear = json.data.bear.map(i => i.name);
             isFirstLoad = false;
 
-            // 如果有 error (例如 key 無效)，更新一下 UI 狀態文字
+            // 如果有 key 錯誤，提示使用者
             if (json.error) {
                 const keyStatus = document.getElementById("keyStatus");
                 if (keyStatus) {
@@ -122,7 +145,6 @@ async function updateDashboard() {
     }
 }
 
-// --- 核心邏輯：比對變動 ---
 function checkDiffAndNotify(newData) {
     if (isFirstLoad) return; 
 
@@ -170,7 +192,6 @@ function getDiff(prev, curr) {
     };
 }
 
-// --- 浮動通知 (永久顯示 + 時間標記) ---
 function showToastAlert(title, htmlContent, type) {
     const container = document.getElementById('notificationContainer');
     const toast = document.createElement('div');
@@ -236,7 +257,6 @@ function renderLists(data) {
     container.appendChild(createSection('等待突破', data.neut, 'neut', '⚖️'));
 }
 
-// --- 設定介面邏輯 ---
 function setupModal() {
     const modal = document.getElementById("settingsModal");
     const btn = document.getElementById("settingsBtn");
@@ -285,8 +305,10 @@ function setupModal() {
         saveSettings();
         saveKeyBtn.innerText = "已儲存";
         setTimeout(() => saveKeyBtn.innerText = "驗證", 1000);
-        updateKeyStatusUI();
-        updateDashboard(); // 立即重新抓資料
+        
+        // 觸發搶奪登入邏輯
+        updateDashboard(true);
+        startPolling(); 
     };
 
     testBtn.onclick = () => {

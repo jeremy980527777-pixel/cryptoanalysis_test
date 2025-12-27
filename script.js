@@ -1,9 +1,10 @@
+// 👇 已填入你的新 Ngrok 網址
 const API_URL = "https://hydrographically-unglib-janyce.ngrok-free.dev/api/results";
 
 // 狀態變數
 let previousDataMap = { bull: [], bear: [] }; 
 let isFirstLoad = true;
-let pollInterval = null; 
+let pollInterval = null;
 
 let settings = {
     notifications: false,
@@ -43,8 +44,13 @@ function playBell() {
 document.addEventListener('DOMContentLoaded', () => {
     loadSettings();
     setupModal();
-    updateDashboard(true); // Claim=true
+    
+    // 第一次載入，傳送 claim=true
+    updateDashboard(true);
+    
+    // 開始輪詢
     startPolling();
+
     setInterval(updateToastTimes, 60000);
 });
 
@@ -52,7 +58,7 @@ function startPolling() {
     if (pollInterval) clearInterval(pollInterval);
     pollInterval = setInterval(() => {
         updateDashboard(false);
-    }, 60000);
+    }, 30000); // ⚠️ 改為 30 秒一次，節省 Ngrok 流量
 }
 
 async function updateDashboard(isClaiming = false) {
@@ -62,14 +68,18 @@ async function updateDashboard(isClaiming = false) {
     let url = `${API_URL}?t=${new Date().getTime()}`;
     if (settings.apiKey) {
         url += `&key=${encodeURIComponent(settings.apiKey)}`;
-        if (isClaiming) url += `&claim=true`;
+        if (isClaiming) {
+            url += `&claim=true`;
+        }
     }
 
     try {
         const res = await fetch(url, {
+            // 這行很重要，讓 Ngrok 知道你是瀏覽器
             headers: new Headers({ "ngrok-skip-browser-warning": "true" }),
         });
 
+        // 處理被踢出 (409)
         if (res.status === 409) {
             if (pollInterval) {
                 clearInterval(pollInterval);
@@ -80,7 +90,6 @@ async function updateDashboard(isClaiming = false) {
             dot.className = 'dot red';
             dot.style.boxShadow = "none";
             showToastAlert("連線中斷", "您的金鑰已在另一台裝置使用。<br>本機已停止更新。", "bear");
-            
             const keyStatus = document.getElementById("keyStatus");
             if (keyStatus) {
                 keyStatus.innerText = "❌ 已被強制登出";
@@ -94,6 +103,7 @@ async function updateDashboard(isClaiming = false) {
         if (json.status === 'success') {
             const isVIP = json.type === 'Premium';
             const userLabel = isVIP ? `👑 VIP (${json.user})` : 'Guest (30m延遲)';
+            
             statusText.innerText = `${userLabel} | 更新: ${json.timestamp}`;
             statusText.style.color = '#666';
 
@@ -114,6 +124,7 @@ async function updateDashboard(isClaiming = false) {
                     keyStatus.style.color = "#F44336";
                 }
             }
+
         } else if (json.status === 'waiting') {
             statusText.innerText = '伺服器正在運算中...';
             dot.className = 'dot orange';
@@ -160,6 +171,7 @@ function checkDiffAndNotify(newData) {
     if (shouldNotify) {
         playBell();
         showToastAlert("市場名單變動", notifyDetails.join('<br>'), alertType);
+
         if (settings.notifications && Notification.permission === "granted") {
             const summary = notifyDetails.map(s => s.replace(/<[^>]*>/g, '')).join('\n');
             new Notification("Kynetic Alert", { body: summary });
@@ -223,25 +235,15 @@ function renderLists(data) {
     const createSection = (title, list, typeClass, icon) => {
         const sec = document.createElement('div');
         sec.className = `section ${typeClass}`;
-        
-        let listHtml = list.length === 0 ? '<div class="empty-msg">無</div>' : '<ul>' + list.map(item => {
-            const isNew = item.time_on_board && item.time_on_board.includes('NEW');
-            const timeClass = isNew ? 'time-badge new' : 'time-badge normal';
-            const timeHtml = `<span class="${timeClass}">${item.time_on_board || 'NEW 🔥'}</span>`;
-
-            return `
+        let listHtml = list.length === 0 ? '<div class="empty-msg">無</div>' : '<ul>' + list.map(item => `
             <li>
-                <div style="display: flex; align-items: center;">
-                    <span class="coin-name">${item.name}</span>
-                    ${timeHtml}
-                </div>
+                <span class="coin-name">${item.name}</span>
                 <div class="badges">
                     <span class="badge msg-badge">${item.msg.replace('爆量','<span class="fire">🔥爆量</span>')}</span>
                     <span class="badge score-badge">${item.score}</span>
+                    <span class="badge time-badge" style="background:#444;color:#ddd;font-size:0.8em;padding:4px 8px;">⏱ ${item.time_on_board || "New"}</span>
                 </div>
-            </li>`;
-        }).join('') + '</ul>';
-        
+            </li>`).join('') + '</ul>';
         sec.innerHTML = `<h3>${icon} ${title}</h3>${listHtml}`;
         return sec;
     };
@@ -298,6 +300,7 @@ function setupModal() {
         saveSettings();
         saveKeyBtn.innerText = "已儲存";
         setTimeout(() => saveKeyBtn.innerText = "驗證", 1000);
+        
         updateDashboard(true);
         startPolling(); 
     };
@@ -323,6 +326,3 @@ function loadSettings() {
     const saved = localStorage.getItem('cryptoMonitorSettings');
     if (saved) settings = { ...settings, ...JSON.parse(saved) };
 }
-
-
-

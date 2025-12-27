@@ -1,4 +1,4 @@
-const API_URL = "https://tunefully-abstemious-shu.ngrok-free.dev/api/results";
+const API_URL = "https://hydrographically-unglib-janyce.ngrok-free.dev/api/results";
 
 // 狀態變數
 let previousDataMap = { bull: [], bear: [] }; 
@@ -323,4 +323,5 @@ function loadSettings() {
     const saved = localStorage.getItem('cryptoMonitorSettings');
     if (saved) settings = { ...settings, ...JSON.parse(saved) };
 }
+
 

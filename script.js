@@ -1,10 +1,10 @@
-// 【重要】請確認這裡是你 Ngrok 的最新網址 (需與 Python 白名單一致)
+// 【重要】請確認這裡是你 Ngrok 的最新網址
 const API_URL = "https://tunefully-abstemious-shu.ngrok-free.dev/api/results";
 
 // 狀態變數
 let previousDataMap = { bull: [], bear: [] }; 
 let isFirstLoad = true;
-let pollInterval = null; // 輪詢計時器
+let pollInterval = null; 
 
 let settings = {
     notifications: false,
@@ -44,13 +44,8 @@ function playBell() {
 document.addEventListener('DOMContentLoaded', () => {
     loadSettings();
     setupModal();
-    
-    // 第一次載入，傳送 claim=true 搶奪登入
-    updateDashboard(true);
-    
-    // 開始輪詢 (之後都是被動更新 isClaiming=false)
+    updateDashboard(true); // Claim=true
     startPolling();
-
     setInterval(updateToastTimes, 60000);
 });
 
@@ -58,7 +53,7 @@ function startPolling() {
     if (pollInterval) clearInterval(pollInterval);
     pollInterval = setInterval(() => {
         updateDashboard(false);
-    }, 10000); // 10秒一次
+    }, 10000);
 }
 
 async function updateDashboard(isClaiming = false) {
@@ -68,9 +63,7 @@ async function updateDashboard(isClaiming = false) {
     let url = `${API_URL}?t=${new Date().getTime()}`;
     if (settings.apiKey) {
         url += `&key=${encodeURIComponent(settings.apiKey)}`;
-        if (isClaiming) {
-            url += `&claim=true`;
-        }
+        if (isClaiming) url += `&claim=true`;
     }
 
     try {
@@ -78,20 +71,15 @@ async function updateDashboard(isClaiming = false) {
             headers: new Headers({ "ngrok-skip-browser-warning": "true" }),
         });
 
-        // 🔥 處理被踢出 (409)
         if (res.status === 409) {
-            // 停止輪詢 (自殺邏輯)
             if (pollInterval) {
                 clearInterval(pollInterval);
                 pollInterval = null;
             }
-
-            // 更新 UI
             statusText.innerText = '🚫 已斷線：帳號在其他裝置登入';
             statusText.style.color = '#F44336';
             dot.className = 'dot red';
             dot.style.boxShadow = "none";
-            
             showToastAlert("連線中斷", "您的金鑰已在另一台裝置使用。<br>本機已停止更新。", "bear");
             
             const keyStatus = document.getElementById("keyStatus");
@@ -107,11 +95,9 @@ async function updateDashboard(isClaiming = false) {
         if (json.status === 'success') {
             const isVIP = json.type === 'Premium';
             const userLabel = isVIP ? `👑 VIP (${json.user})` : 'Guest (30m延遲)';
-            
             statusText.innerText = `${userLabel} | 更新: ${json.timestamp}`;
             statusText.style.color = '#666';
 
-            // VIP 狀態顯示
             dot.className = isVIP ? 'dot orange' : 'dot green';
             dot.style.boxShadow = isVIP ? "0 0 8px #FFD700" : "0 0 5px #4CAF50";
 
@@ -122,7 +108,6 @@ async function updateDashboard(isClaiming = false) {
             previousDataMap.bear = json.data.bear.map(i => i.name);
             isFirstLoad = false;
 
-            // 如果有 key 錯誤，提示使用者
             if (json.error) {
                 const keyStatus = document.getElementById("keyStatus");
                 if (keyStatus) {
@@ -130,7 +115,6 @@ async function updateDashboard(isClaiming = false) {
                     keyStatus.style.color = "#F44336";
                 }
             }
-
         } else if (json.status === 'waiting') {
             statusText.innerText = '伺服器正在運算中...';
             dot.className = 'dot orange';
@@ -177,7 +161,6 @@ function checkDiffAndNotify(newData) {
     if (shouldNotify) {
         playBell();
         showToastAlert("市場名單變動", notifyDetails.join('<br>'), alertType);
-
         if (settings.notifications && Notification.permission === "granted") {
             const summary = notifyDetails.map(s => s.replace(/<[^>]*>/g, '')).join('\n');
             new Notification("Kynetic Alert", { body: summary });
@@ -241,14 +224,26 @@ function renderLists(data) {
     const createSection = (title, list, typeClass, icon) => {
         const sec = document.createElement('div');
         sec.className = `section ${typeClass}`;
-        let listHtml = list.length === 0 ? '<div class="empty-msg">無</div>' : '<ul>' + list.map(item => `
+        
+        // 🕒 修改：加入時間標籤顯示邏輯
+        let listHtml = list.length === 0 ? '<div class="empty-msg">無</div>' : '<ul>' + list.map(item => {
+            const isNew = item.time_on_board && item.time_on_board.includes('NEW');
+            const timeClass = isNew ? 'time-badge new' : 'time-badge normal';
+            const timeHtml = `<span class="${timeClass}">${item.time_on_board || 'NEW 🔥'}</span>`;
+
+            return `
             <li>
-                <span class="coin-name">${item.name}</span>
+                <div style="display: flex; align-items: center;">
+                    <span class="coin-name">${item.name}</span>
+                    ${timeHtml}
+                </div>
                 <div class="badges">
                     <span class="badge msg-badge">${item.msg.replace('爆量','<span class="fire">🔥爆量</span>')}</span>
                     <span class="badge score-badge">${item.score}</span>
                 </div>
-            </li>`).join('') + '</ul>';
+            </li>`;
+        }).join('') + '</ul>';
+        
         sec.innerHTML = `<h3>${icon} ${title}</h3>${listHtml}`;
         return sec;
     };
@@ -305,8 +300,6 @@ function setupModal() {
         saveSettings();
         saveKeyBtn.innerText = "已儲存";
         setTimeout(() => saveKeyBtn.innerText = "驗證", 1000);
-        
-        // 觸發搶奪登入邏輯
         updateDashboard(true);
         startPolling(); 
     };

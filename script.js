@@ -52,7 +52,7 @@ function startPolling() {
     if (pollInterval) clearInterval(pollInterval);
     pollInterval = setInterval(() => {
         updateDashboard(false);
-    }, 10000);
+    }, 60000);
 }
 
 async function updateDashboard(isClaiming = false) {
@@ -323,5 +323,6 @@ function loadSettings() {
     const saved = localStorage.getItem('cryptoMonitorSettings');
     if (saved) settings = { ...settings, ...JSON.parse(saved) };
 }
+
 
 

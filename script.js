@@ -225,7 +225,6 @@ function renderLists(data) {
         const sec = document.createElement('div');
         sec.className = `section ${typeClass}`;
         
-        // 🕒 修改：加入時間標籤顯示邏輯
         let listHtml = list.length === 0 ? '<div class="empty-msg">無</div>' : '<ul>' + list.map(item => {
             const isNew = item.time_on_board && item.time_on_board.includes('NEW');
             const timeClass = isNew ? 'time-badge new' : 'time-badge normal';

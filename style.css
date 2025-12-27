@@ -73,11 +73,11 @@ input:checked + .slider { background-color: #2196F3; }
 input:checked + .slider:before { transform: translateX(26px); }
 input[type=range] { width: 100px; accent-color: #2196F3; }
 
-/* Notification Toasts (永久顯示 + 時間標記) */
+/* Notification Toasts */
 .notification-container {
     position: fixed; bottom: 20px; right: 20px; z-index: 999;
     display: flex; flex-direction: column; gap: 10px;
-    max-height: 80vh; overflow-y: auto; /* 避免通知太多蓋滿螢幕 */
+    max-height: 80vh; overflow-y: auto;
 }
 .toast-alert {
     background: #252525; color: #fff; width: 300px; padding: 15px; border-radius: 8px;
@@ -104,4 +104,33 @@ input[type=range] { width: 100px; accent-color: #2196F3; }
 @keyframes slideIn {
     from { transform: translateX(100%); opacity: 0; }
     to { transform: translateX(0); opacity: 1; }
+}
+
+/* --- 新增：霸榜時間標籤 --- */
+.time-badge {
+    font-size: 0.75em;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-left: 8px;
+    font-weight: bold;
+    display: inline-block;
+    vertical-align: middle;
+}
+/* 新上榜樣式 */
+.time-badge.new {
+    background: linear-gradient(45deg, #ff00cc, #333399);
+    color: #fff;
+    box-shadow: 0 0 5px rgba(255, 0, 204, 0.5);
+    animation: pulse 1.5s infinite;
+}
+/* 一般時間樣式 */
+.time-badge.normal {
+    background: #333;
+    color: #aaa;
+    border: 1px solid #444;
+}
+@keyframes pulse {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.1); opacity: 0.8; }
+    100% { transform: scale(1); opacity: 1; }
 }

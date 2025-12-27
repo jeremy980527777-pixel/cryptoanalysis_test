@@ -1,4 +1,3 @@
-// 【重要】請確認這裡是你 Ngrok 的最新網址
 const API_URL = "https://tunefully-abstemious-shu.ngrok-free.dev/api/results";
 
 // 狀態變數
@@ -324,3 +323,4 @@ function loadSettings() {
     const saved = localStorage.getItem('cryptoMonitorSettings');
     if (saved) settings = { ...settings, ...JSON.parse(saved) };
 }
+

@@ -1,5 +1,5 @@
 // 👇 已填入你的新 Ngrok 網址
-const API_URL = "https://hydrographically-unglib-janyce.ngrok-free.dev/api/results";
+const API_URL = "https://api.delta-scope.net/api/results";
 
 // 狀態變數
 let previousDataMap = { bull: [], bear: [] }; 
@@ -326,3 +326,4 @@ function loadSettings() {
     const saved = localStorage.getItem('cryptoMonitorSettings');
     if (saved) settings = { ...settings, ...JSON.parse(saved) };
 }
+

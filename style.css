@@ -1,5 +1,5 @@
 body { font-family: 'Segoe UI', Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background-color: #121212; color: #e0e0e0; }
-h1 { text-align: center; color: #fff; margin-bottom: 5px; text-shadow: 0 0 10px rgba(33, 150, 243, 0.5); letter-spacing: 1px; margin-top: 40px; } /* 增加 top margin 避開按鈕 */
+h1 { text-align: center; color: #fff; margin-bottom: 5px; text-shadow: 0 0 10px rgba(33, 150, 243, 0.5); letter-spacing: 1px; margin-top: 40px; } /* 🔥 修改：增加頂部間距避開按鈕 */
 .subtitle { text-align: center; color: #888; font-size: 0.9em; margin-bottom: 30px; letter-spacing: 0.5px; }
 
 .status-bar { text-align: right; margin-bottom: 15px; font-size: 0.8em; color: #666; display: flex; align-items: center; justify-content: flex-end; gap: 8px;}
@@ -28,9 +28,9 @@ li:hover { transform: translateY(-2px); background: #2f2f2f; }
 .fire { color: #ff9800; font-weight: bold; }
 .empty-msg { color: #555; font-style: italic; text-align: center; padding: 20px; }
 .loading { text-align: center; padding: 40px; color: #666; font-style: italic; }
-.footer { text-align: center; margin-top: 40px; color: #444; font-size: 0.8em; }
+.footer { text-align: center; margin-top: 40px; color: #444; font-size: 0.8em; } /* 雖然 HTML 移除了，這行 CSS 留著也沒關係 */
 
-/* 🔥 修改：右上角控制區 (包含社群按鈕與設定) 🔥 */
+/* 🔥 新增：右上角控制區 (包含社群按鈕與設定) 🔥 */
 .top-controls {
     position: absolute; 
     top: 20px; 
@@ -41,13 +41,13 @@ li:hover { transform: translateY(-2px); background: #2f2f2f; }
     z-index: 50;
 }
 
-/* 社群按鈕樣式 */
+/* 🔥 新增：社群按鈕樣式 🔥 */
 .social-btn img {
-    width: 28px;
-    height: 28px;
+    width: 24px;
+    height: 24px;
     opacity: 0.6;
     transition: all 0.3s;
-    filter: invert(1); /* 如果你的圖是黑色的，這行會讓它變白。如果是彩色的，請刪掉這行 */
+    filter: invert(1); /* 讓黑色圖示變白。如果是彩色圖示請刪除這行 */
     vertical-align: middle;
 }
 .social-btn:hover img {
@@ -55,12 +55,12 @@ li:hover { transform: translateY(-2px); background: #2f2f2f; }
     transform: scale(1.1);
 }
 
-/* 設定按鈕 (拿掉絕對定位，改為跟著 flex 排列) */
+/* 🔥 修改：設定按鈕 (改為靜態定位，跟隨 flex) 🔥 */
 .settings-btn {
     position: static; /* 覆蓋原本的 absolute */
     background: transparent; 
     border: none; 
-    font-size: 1.8em; 
+    font-size: 1.5em; 
     cursor: pointer; 
     color: #888; 
     transition: transform 0.3s, color 0.3s;
@@ -139,7 +139,7 @@ input[type=range] { width: 100px; accent-color: #2196F3; }
     to { transform: translateX(0); opacity: 1; }
 }
 
-/* 霸榜時間標籤 */
+/* 霸榜時間標籤 (這裡也幫你保留著) */
 .time-badge {
     font-size: 0.75em;
     padding: 2px 6px;

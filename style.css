@@ -47,7 +47,6 @@ li:hover { transform: translateY(-2px); background: #2f2f2f; }
     height: 24px;
     opacity: 0.6;
     transition: all 0.3s;
-    filter: invert(1); /* 讓黑色圖示變白。如果是彩色圖示請刪除這行 */
     vertical-align: middle;
 }
 .social-btn:hover img {
@@ -165,3 +164,4 @@ input[type=range] { width: 100px; accent-color: #2196F3; }
     50% { transform: scale(1.1); opacity: 0.8; }
     100% { transform: scale(1); opacity: 1; }
 }
+

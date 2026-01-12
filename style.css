@@ -1,4 +1,4 @@
-/* --- å…¨å±€è¨­å®š --- */
+/* --- 全局設定 --- */
 body {
     background-color: #121212;
     color: #e0e0e0;
@@ -7,7 +7,7 @@ body {
     padding: 20px;
 }
 
-/* --- é ‚éƒ¨ Header å€åŸŸ --- */
+/* --- 頂部 Header 區域 --- */
 header {
     display: flex;
     flex-direction: column;
@@ -37,7 +37,7 @@ h1 {
     font-size: 0.9rem;
 }
 
-/* --- ðŸ”¥ å³ä¸Šè§’åœ–ç¤ºç¾¤çµ„ (Threads/Discord/Settings) ðŸ”¥ --- */
+/* --- 🔥 右上角圖示群組 (Threads/Discord/Settings) 🔥 --- */
 .icon-group {
     position: absolute;
     top: 10px;
@@ -48,7 +48,7 @@ h1 {
     z-index: 100;
 }
 
-/* ç¤¾ç¾¤åœ–ç¤ºé€£çµ */
+/* 社群圖示連結 */
 .icon-link {
     display: flex;
     align-items: center;
@@ -60,9 +60,9 @@ h1 {
 .icon-link img {
     width: 28px;
     height: 28px;
-    opacity: 0.8;          /* ç¨å¾®å¢žåŠ ä¸é€æ˜Žåº¦ */
+    opacity: 0.8;          /* 稍微增加不透明度 */
     transition: opacity 0.3s;
-    /* filter: invert(1);  <--- ç¢ºä¿é€™è¡Œè¢«ç§»é™¤ï¼Œé¡¯ç¤ºåŽŸè‰² */
+    /* filter: invert(1);  <--- 確保這行被移除，顯示原色 */
 }
 
 .icon-link:hover img {
@@ -73,7 +73,7 @@ h1 {
     transform: scale(0.95);
 }
 
-/* è¨­å®šæŒ‰éˆ• (é½’è¼ª) */
+/* 設定按鈕 (齒輪) */
 #settingsBtn {
     background: none;
     border: none;
@@ -90,7 +90,7 @@ h1 {
     transform: rotate(30deg);
 }
 
-/* æ‰‹æ©Ÿç‰ˆ RWD èª¿æ•´ */
+/* 手機版 RWD 調整 */
 @media (max-width: 600px) {
     .icon-group {
         position: static;
@@ -99,7 +99,7 @@ h1 {
     }
 }
 
-/* --- ç‹€æ…‹é¡¯ç¤º --- */
+/* --- 狀態顯示 --- */
 .status-bar {
     display: flex;
     align-items: center;
@@ -122,7 +122,7 @@ h1 {
 .dot.orange { background-color: #FF9800; box-shadow: 0 0 5px #FF9800; }
 .dot.red { background-color: #F44336; }
 
-/* --- åˆ—è¡¨å®¹å™¨ --- */
+/* --- 列表容器 --- */
 .container {
     max-width: 1200px;
     margin: 0 auto;
@@ -134,7 +134,7 @@ h1 {
     gap: 20px;
 }
 
-/* --- å¡ç‰‡å€å¡Š --- */
+/* --- 卡片區塊 --- */
 .section {
     background-color: #1e1e1e;
     border-radius: 12px;
@@ -154,7 +154,7 @@ h1 {
     color: #eee;
 }
 
-/* --- åˆ—è¡¨é …ç›® --- */
+/* --- 列表項目 --- */
 ul { list-style: none; padding: 0; margin: 0; }
 
 li {
@@ -188,13 +188,13 @@ li:last-child { border-bottom: none; }
 
 .fire { color: #FF5722; font-weight: bold; }
 
-/* --- ðŸ”¥ å½ˆå‡ºé€šçŸ¥ Toast (å³ä¸‹è§’å›ºå®šç‰ˆ) ðŸ”¥ --- */
+/* --- 🔥 彈出通知 Toast (右下角固定版) 🔥 --- */
 #notificationContainer {
-    position: fixed;       /* å›ºå®šå®šä½ */
-    bottom: 20px;          /* é ä¸‹ 20px */
-    right: 20px;           /* é å³ 20px */
+    position: fixed;       /* 固定定位 */
+    bottom: 20px;          /* 靠下 20px */
+    right: 20px;           /* 靠右 20px */
     width: 320px;          
-    z-index: 9999;         /* æœ€ä¸Šå±¤ */
+    z-index: 9999;         /* 最上層 */
     display: flex;
     flex-direction: column; 
     gap: 10px;             
@@ -206,7 +206,7 @@ li:last-child { border-bottom: none; }
     padding: 15px;
     border-radius: 4px;
     box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-    /* ä½¿ç”¨å³å´æ»‘å…¥å‹•ç•«ï¼Œå¸¶ä¸€é»žå½ˆæ€§ (cubic-bezier) */
+    /* 使用右側滑入動畫，帶一點彈性 (cubic-bezier) */
     animation: slideInRight 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     position: relative;
     color: #fff;
@@ -229,19 +229,19 @@ li:last-child { border-bottom: none; }
 .toast-body span.added { color: #4CAF50; }
 .toast-body span.removed { color: #F44336; }
 
-/* å®šç¾©å³å´æ»‘å…¥å‹•ç•« */
+/* 定義右側滑入動畫 */
 @keyframes slideInRight {
     from { 
-        transform: translateX(100%); /* å¾žç•«é¢å³é‚Šå¤–é¢é–‹å§‹ */
+        transform: translateX(100%); /* 從畫面右邊外面開始 */
         opacity: 0; 
     }
     to { 
-        transform: translateX(0);    /* å›žåˆ°åŽŸä½ */
+        transform: translateX(0);    /* 回到原位 */
         opacity: 1; 
     }
 }
 
-/* --- è¨­å®š Modal --- */
+/* --- 設定 Modal --- */
 .modal {
     display: none; 
     position: fixed; 
@@ -306,7 +306,7 @@ input[type="text"], select {
 }
 .secondary-btn:hover { background: #555; }
 
-/* é–‹é—œ Switch */
+/* 開關 Switch */
 .switch { position: relative; display: inline-block; width: 50px; height: 24px; }
 .switch input { opacity: 0; width: 0; height: 0; }
 .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; }

@@ -1,10 +1,17 @@
-// 👇 確保這裡是你的主網域 (必須對應 server.py 裡的設定)
-const API_URL = "https://delta-scope.net/api/results";
+const API_URL = "https://api.delta-scope.net/api/results";
+
+// 1. 生成唯一裝置 ID
+let deviceId = localStorage.getItem("device_id");
+if (!deviceId) {
+    deviceId = "dev_" + Math.random().toString(36).substring(2) + Date.now().toString(36);
+    localStorage.setItem("device_id", deviceId);
+}
 
 // 狀態變數
 let previousDataMap = { bull: [], bear: [] }; 
 let isFirstLoad = true;
-let pollInterval = null;
+let pollInterval = null; // 數據更新計時器
+let pingInterval = null; // 🔥 心跳檢查計時器
 
 let settings = {
     notifications: false,
@@ -44,62 +51,58 @@ function playBell() {
 document.addEventListener('DOMContentLoaded', () => {
     loadSettings();
     setupModal();
-    
-    // 第一次載入，傳送 claim=true
-    updateDashboard(true);
-    
-    // 開始輪詢
+    updateDashboard(true); // 首次載入 (Claim)
     startPolling();
-
     setInterval(updateToastTimes, 60000);
 });
 
 function startPolling() {
-    // 避免重複啟動
+    // 1. 數據更新：每 30 秒一次 (大流量)
     if (pollInterval) clearInterval(pollInterval);
     pollInterval = setInterval(() => {
         updateDashboard(false);
-    }, 5000); // 5秒更新一次
+    }, 30000);
+
+    // 2. 🔥 心跳偵測：每 3 秒一次 (極小流量) 🔥
+    if (pingInterval) clearInterval(pingInterval);
+    if (settings.apiKey) {
+        pingInterval = setInterval(() => {
+            checkAuthHeartbeat();
+        }, 3000);
+    }
+}
+
+// 專門用來檢查是否被踢出的輕量函式
+async function checkAuthHeartbeat() {
+    if (!settings.apiKey) return;
+    // 加上 mode=ping，告訴伺服器不要回傳數據，只要檢查權限
+    let url = `${API_URL}?key=${encodeURIComponent(settings.apiKey)}&device_id=${deviceId}&mode=ping`;
+
+    try {
+        const res = await fetch(url, { headers: { "ngrok-skip-browser-warning": "true" } });
+        if (res.status === 409) {
+            handleKickOut(); // 被踢出
+        }
+    } catch (e) { } // 網路波動忽略
 }
 
 async function updateDashboard(isClaiming = false) {
     const statusText = document.getElementById('statusText');
     const dot = document.getElementById('dot');
-    // 🔥 新增：同時抓取 Modal 裡的狀態文字，確保同步更新
-    const keyStatus = document.getElementById("keyStatus");
     
-    let url = `${API_URL}?t=${new Date().getTime()}`;
-    
-    // 只有當 key 不為空時才傳送
-    if (settings.apiKey && settings.apiKey.trim() !== "") {
+    let url = `${API_URL}?t=${new Date().getTime()}&device_id=${deviceId}`;
+    if (settings.apiKey) {
         url += `&key=${encodeURIComponent(settings.apiKey)}`;
-        if (isClaiming) {
-            url += `&claim=true`;
-        }
+        if (isClaiming) url += `&claim=true`;
     }
 
     try {
-        const res = await fetch(url);
+        const res = await fetch(url, {
+            headers: new Headers({ "ngrok-skip-browser-warning": "true" }),
+        });
 
-        // 處理被踢出 (409)
         if (res.status === 409) {
-            if (pollInterval) {
-                clearInterval(pollInterval); // 停止輪詢
-                pollInterval = null;
-            }
-            // 更新上方狀態列
-            statusText.innerText = '🚫 已斷線：帳號在其他裝置登入';
-            statusText.style.color = '#F44336';
-            dot.className = 'dot red';
-            dot.style.boxShadow = "none";
-            
-            // 🔥 更新 Modal 裡的狀態
-            if (keyStatus) {
-                keyStatus.innerText = "❌ 已被強制登出 (請重新驗證)";
-                keyStatus.style.color = "#F44336";
-            }
-
-            showToastAlert("連線中斷", "您的金鑰已在另一台裝置使用。<br>本機已停止更新。", "bear");
+            handleKickOut();
             return;
         }
 
@@ -111,20 +114,8 @@ async function updateDashboard(isClaiming = false) {
             
             statusText.innerText = `${userLabel} | 更新: ${json.timestamp}`;
             statusText.style.color = '#666';
-
             dot.className = isVIP ? 'dot orange' : 'dot green';
             dot.style.boxShadow = isVIP ? "0 0 8px #FFD700" : "0 0 5px #4CAF50";
-
-            // 🔥 關鍵修正：成功連線時，根據身分同步更新 Modal 狀態文字
-            if (keyStatus) {
-                if (isVIP) {
-                    keyStatus.innerText = `✅ VIP 已啟用: ${json.user}`;
-                    keyStatus.style.color = "#4CAF50";
-                } else {
-                    keyStatus.innerText = "👤 目前狀態: 免費版 (30分鐘延遲)";
-                    keyStatus.style.color = "#888";
-                }
-            }
 
             renderLists(json.data);
             checkDiffAndNotify(json.data);
@@ -133,10 +124,20 @@ async function updateDashboard(isClaiming = false) {
             previousDataMap.bear = json.data.bear.map(i => i.name);
             isFirstLoad = false;
 
-            // 處理無效 Key 的情況 (後端回傳 success 但 type 是 Free)
-            if (json.error) {
+            // 成功連上VIP，更新狀態字
+            if (isVIP) {
+                const keyStatus = document.getElementById("keyStatus");
                 if (keyStatus) {
-                    keyStatus.innerText = "❌ 金鑰無效，已切換至免費版";
+                    keyStatus.innerText = "✅ 已連線";
+                    keyStatus.style.color = "#4CAF50";
+                }
+                // 如果是第一次連上VIP，啟動心跳檢查
+                if (!pingInterval) startPolling();
+            } else if (json.error) {
+                // key 錯誤
+                const keyStatus = document.getElementById("keyStatus");
+                if (keyStatus) {
+                    keyStatus.innerText = "❌ 金鑰無效";
                     keyStatus.style.color = "#F44336";
                 }
             }
@@ -155,9 +156,34 @@ async function updateDashboard(isClaiming = false) {
     }
 }
 
+function handleKickOut() {
+    // 停止所有更新
+    if (pollInterval) clearInterval(pollInterval);
+    if (pingInterval) clearInterval(pingInterval);
+    
+    const statusText = document.getElementById('statusText');
+    const dot = document.getElementById('dot');
+
+    statusText.innerText = '🚫 已斷線：帳號在其他裝置登入';
+    statusText.style.color = '#F44336';
+    dot.className = 'dot red';
+    dot.style.boxShadow = "none";
+
+    const keyStatus = document.getElementById("keyStatus");
+    if (keyStatus) {
+        keyStatus.innerText = "❌ 已被強制登出";
+        keyStatus.style.color = "#F44336";
+    }
+
+    // 避免重複跳視窗
+    if (!document.getElementById("kickout-toast")) {
+        const t = showToastAlert("連線中斷", "您的金鑰已在另一台裝置使用。<br>本機已停止更新。", "bear");
+        if(t) t.id = "kickout-toast";
+    }
+}
+
 function checkDiffAndNotify(newData) {
     if (isFirstLoad) return; 
-
     const currBull = newData.bull.map(i => i.name);
     const currBear = newData.bear.map(i => i.name);
     const bullDiff = getDiff(previousDataMap.bull, currBull);
@@ -187,10 +213,9 @@ function checkDiffAndNotify(newData) {
     if (shouldNotify) {
         playBell();
         showToastAlert("市場名單變動", notifyDetails.join('<br>'), alertType);
-
         if (settings.notifications && Notification.permission === "granted") {
             const summary = notifyDetails.map(s => s.replace(/<[^>]*>/g, '')).join('\n');
-            new Notification("Delta Scope", { body: summary });
+            new Notification("Kynetic Alert", { body: summary });
         }
     }
 }
@@ -206,21 +231,17 @@ function showToastAlert(title, htmlContent, type) {
     const container = document.getElementById('notificationContainer');
     const toast = document.createElement('div');
     const nowTimestamp = Date.now();
-    
     toast.setAttribute('data-timestamp', nowTimestamp);
     toast.className = `toast-alert ${type}`;
-    
     toast.innerHTML = `
         <div class="toast-header">
-            <div class="toast-title-group">
-                <span class="toast-title-text">${title}</span>
-                <span class="toast-time">剛剛</span>
-            </div>
+            <div class="toast-title-group"><span class="toast-title-text">${title}</span><span class="toast-time">剛剛</span></div>
             <span class="toast-close" onclick="this.closest('.toast-alert').remove()">✕</span>
         </div>
         <div class="toast-body">${htmlContent}</div>
     `;
     container.prepend(toast);
+    return toast;
 }
 
 function getRelativeTime(timestamp) {
@@ -239,9 +260,7 @@ function updateToastTimes() {
     toasts.forEach(toast => {
         const timestamp = parseInt(toast.getAttribute('data-timestamp'));
         const timeLabel = toast.querySelector('.toast-time');
-        if (timestamp && timeLabel) {
-            timeLabel.innerText = getRelativeTime(timestamp);
-        }
+        if (timestamp && timeLabel) timeLabel.innerText = getRelativeTime(timestamp);
     });
 }
 
@@ -274,17 +293,8 @@ function setupModal() {
     const close = document.getElementsByClassName("close-btn")[0];
     const apiKeyInput = document.getElementById("apiKeyInput");
     const saveKeyBtn = document.getElementById("saveKeyBtn");
-    const keyStatus = document.getElementById("keyStatus");
 
-    btn.onclick = () => {
-        modal.style.display = "block";
-        apiKeyInput.value = settings.apiKey || "";
-        // 打開視窗時也更新一次狀態文字
-        if (!settings.apiKey) {
-            keyStatus.innerText = "目前狀態: 免費版 (30分鐘延遲)";
-            keyStatus.style.color = "#888";
-        }
-    };
+    btn.onclick = () => { modal.style.display = "block"; apiKeyInput.value = settings.apiKey || ""; };
     close.onclick = () => modal.style.display = "none";
     window.onclick = (e) => { if (e.target == modal) modal.style.display = "none"; }
 
@@ -318,34 +328,17 @@ function setupModal() {
         const val = apiKeyInput.value.trim();
         settings.apiKey = val;
         saveSettings();
-        
-        saveKeyBtn.innerText = "已儲存";
-        setTimeout(() => saveKeyBtn.innerText = "驗證並儲存", 1000);
-        
-        // 🔥 關鍵修正邏輯 1: 立即回饋
-        // 如果輸入框是空的，立刻更新文字為免費版，不要顯示「檢查中」
-        if (!val) {
-            keyStatus.innerText = "目前狀態: 免費版 (30分鐘延遲)";
-            keyStatus.style.color = "#888";
-        } else {
-            keyStatus.innerText = "🔄 正在驗證金鑰...";
-            keyStatus.style.color = "#FF9800"; // 橘色
-        }
-
-        // 🔥 關鍵修正邏輯 2: 復活機制
-        // 如果之前被強制登出 (pollInterval 被清空了)，要重新啟動輪詢！
-        if (!pollInterval) {
-            console.log("重新啟動輪詢...");
-            startPolling();
-        }
-
-        // 立刻刷新一次
-        updateDashboard(true); 
+        saveKeyBtn.innerText = "驗證中...";
+        // 觸發一次 Claim
+        updateDashboard(true).then(() => {
+            saveKeyBtn.innerText = "驗證/儲存";
+            startPolling(); // 重啟輪詢，確保 Heartbeat 啟動
+        });
     };
 
     testBtn.onclick = () => {
         playBell();
-        showToastAlert("測試通知", "<span class='added'>🚀 多頭新增: BTC</span><br><span class='removed'>💨 空頭移除: ETH</span>", "mixed");
+        showToastAlert("測試通知", "<span class='added'>🚀 多頭新增: BTC</span>", "mixed");
     };
 }
 
@@ -354,3 +347,4 @@ function loadSettings() {
     const saved = localStorage.getItem('cryptoMonitorSettings');
     if (saved) settings = { ...settings, ...JSON.parse(saved) };
 }
+
